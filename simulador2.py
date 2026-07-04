@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
 import random
 
+# CONFIGURACIÓN DE LA PÁGINA
 st.set_page_config(page_title="Analizador y Simulador - Spaceman", layout="wide")
 
 st.title("🚀 Laboratorio Estocástico: Spaceman")
@@ -15,6 +15,9 @@ st.write(
 # Crear pestañas para organizar la aplicación
 tab1, tab2 = st.tabs(["📊 Análisis de Markov (Datos Históricos)", "🎲 Simulador PRNG (Dinámica del Juego)"])
 
+# ==========================================
+# PESTAÑA 1: ANÁLISIS DE MARKOV
+# ==========================================
 with tab1:
     st.header("Análisis de Cadenas de Markov")
     
@@ -29,6 +32,7 @@ with tab1:
 
     sesiones = [[int(char) for char in sesion] for sesion in sesiones_raw]
 
+    # 2. Calcular matriz de transición
     counts = np.zeros((3, 3))
     for sesion in sesiones:
         for i in range(len(sesion) - 1):
@@ -40,6 +44,7 @@ with tab1:
     row_sums = counts.sum(axis=1, keepdims=True)
     transition_matrix = np.divide(counts, row_sums, out=np.zeros_like(counts), where=row_sums!=0)
 
+    # 3. Interfaz
     col1, col2 = st.columns([1, 2])
 
     with col1:
@@ -52,6 +57,7 @@ with tab1:
         ultimo_estado = i5
         
     with col2:
+        st.subheader("Matriz de Transición General")
         df_matrix = pd.DataFrame(
             transition_matrix, 
             index=["Estado 1 (≥x2.0)", "Estado 2 (<x2.0)", "Estado 3 (≥x4.5)"],
@@ -59,19 +65,19 @@ with tab1:
         )
         st.dataframe(df_matrix.style.format("{:.2%}"))
 
+        st.subheader(f"🔮 Probabilidad para el Siguiente Paso después de un Estado {ultimo_estado}")
         probabilidades_siguientes = transition_matrix[ultimo_estado - 1]
-        df_prob = pd.DataFrame({
-            "Resultado Siguiente": ["Estado 1 (Éxito ≥2.0)", "Estado 2 (Riesgo <2.0)", "Estado 3 (Excelente ≥4.5)"],
-            "Probabilidad Empírica": probabilidades_siguientes
-        })
         
-        fig = px.bar(
-            df_prob, x="Resultado Siguiente", y="Probabilidad Empírica",
-            text=df_prob["Probabilidad Empírica"].apply(lambda x: f"{x:.2%}"),
-            range_y=[0, 1]
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        # AQUI REEMPLAZAMOS PLOTLY POR EL GRÁFICO NATIVO DE STREAMLIT
+        df_prob = pd.DataFrame({
+            "Probabilidad Empírica": probabilidades_siguientes
+        }, index=["Estado 1 (≥2.0)", "Estado 2 (<2.0)", "Estado 3 (≥4.5)"])
+        
+        st.bar_chart(df_prob, color="#4CAF50")
 
+# ==========================================
+# PESTAÑA 2: SIMULADOR PRNG
+# ==========================================
 with tab2:
     st.header("Simulador de Vuelo (PRNG)")
     st.write(
@@ -96,35 +102,27 @@ with tab2:
         st.subheader("Resultado de la Simulación")
         if generar:
             # Lógica matemática del juego Crash
-            # U es un flotante aleatorio entre 0 y 1
             U = random.random()
+            E = 0.99  # Ventaja de la casa
             
-            # E es el "House Edge" (Ventaja de la casa). 0.99 = 1% de ventaja.
-            E = 0.99 
-            
-            # Fórmula de choque
-            if U == 1.0: # Prevención de división por cero
+            if U == 1.0:
                 crash_point = 100.0
             else:
                 crash_point = E / (1.0 - U)
             
-            # Aplicar límites (x1.0 mínimo, x100 máximo)
             crash_point = max(1.0, crash_point)
             crash_point = min(100.0, crash_point)
-            
-            # Redondear a 2 decimales para emular la interfaz del juego
             crash_point_str = f"{crash_point:.2f}"
             
-            # Determinar la categoría para conectarlo con tu análisis anterior
             if crash_point >= 4.5:
                 categoria = 3
-                color = "green"
+                color = "#4CAF50" # Verde
             elif crash_point >= 2.0:
                 categoria = 1
-                color = "blue"
+                color = "#2196F3" # Azul
             else:
                 categoria = 2
-                color = "red"
+                color = "#F44336" # Rojo
                 
             st.markdown(
                 f"""
